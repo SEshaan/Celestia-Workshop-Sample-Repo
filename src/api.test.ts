@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { acknowledgeIncident, getIncidents, resetApi } from './api'
+import { acknowledgeIncident, getIncident, getIncidents, resetApi } from './api'
 
 afterEach(resetApi)
 
@@ -13,5 +13,17 @@ describe('incident API contract', () => {
 
   it('rejects acknowledgement for a closed incident', async () => {
     await expect(acknowledgeIncident('5')).rejects.toThrow('Only active incidents')
+  })
+
+  it('fetches and acknowledges Payment API latency incident (id 1)', async () => {
+    const incident = await getIncident('1')
+    expect(incident.id).toBe('1')
+    expect(incident.title).toBe('Payment API latency')
+    expect(incident.service).toBe('payments-api')
+    expect(incident.status).toBe('open')
+
+    const acknowledged = await acknowledgeIncident('1')
+    expect(acknowledged.status).toBe('acknowledged')
+    expect(acknowledged.updatedAt).toBeDefined()
   })
 })

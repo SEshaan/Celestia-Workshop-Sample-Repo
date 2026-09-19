@@ -9,19 +9,28 @@ export function IncidentDetail() {
     data: incident,
     isLoading,
     isError,
-  } = useQuery({ queryKey: ['incident'], queryFn: () => getIncident(id) })
+  } = useQuery({ queryKey: ['incident', id], queryFn: () => getIncident(id) })
   const mutation = useMutation({
     mutationFn: async () => {
       if (id === '4') throw new Error('Acknowledgement service unavailable')
       return acknowledgeIncident(id)
     },
     onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: ['incident'] })
-      queryClient.setQueryData(['incident'], (current: typeof incident) =>
+      await queryClient.cancelQueries({ queryKey: ['incident', id] })
+      const previous = queryClient.getQueryData(['incident', id])
+      queryClient.setQueryData(['incident', id], (current: typeof incident) =>
         current ? { ...current, status: 'acknowledged' } : current,
       )
+      return { previous }
     },
-    onSuccess: (updated) => queryClient.setQueryData(['incident'], updated),
+    onError: (_error, _vars, context) => {
+      queryClient.setQueryData(['incident', id], context?.previous)
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['incident', id], updated)
+      queryClient.invalidateQueries({ queryKey: ['incidents'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-incidents'] })
+    },
   })
   if (isLoading) return <div className="loading">Loading incident...</div>
   if (id === 'broken' && !isLoading) throw new Error('Malformed incident response')
